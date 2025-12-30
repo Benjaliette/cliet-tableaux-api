@@ -124,11 +124,13 @@ jobs:
         uses: imranismail/setup-kustomize@v2
 
       - name: Update image tag
+        env:
+          GITOPS_TOKEN: ${secrets.GITOPS_PAT}
         run: |
           cd gitops
           
           # Configurer Git remote avec le token
-          git remote set-url origin https://x-access-token:${{ secrets.GITOPS_PAT }}@github.com/${{ github.repository_owner }}/cliet-tableaux-angular-gitops.git
+          git remote set-url origin "https://x-access-token:${GITOPS_TOKEN}@github.com/${{ github.repository_owner }}/cliet-tableaux-angular-gitops.git"
           
           # Calculer le nouveau tag
           NEW_TAG="main-${GITHUB_SHA::7}"
