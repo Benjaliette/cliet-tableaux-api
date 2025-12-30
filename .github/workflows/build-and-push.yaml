@@ -64,6 +64,11 @@ jobs:
           name: jar-file
           path: target/
 
+      - name: Set lowercase owner
+        id: lowercase
+        run: |
+          echo "owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -78,7 +83,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.owner }}/${{ github.event.repository.name }}
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
@@ -95,18 +100,28 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+
   update-gitops:
     needs: docker-build-push
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
+      - name: Set lowercase owner
+        id: lowercase
+        run: |
+          echo "owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
       - name: Checkout GitOps repo
         uses: actions/checkout@v4
         with:
-          repository: Benjaliette/cliet-tableaux-angular-gitops
+          repository: ${{ github.repository_owner }}/cliet-tableaux-angular-gitops
           token: ${{ secrets.GITOPS_PAT }}
           path: gitops
+
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v2
 
       - name: Update image tag
         run: |
