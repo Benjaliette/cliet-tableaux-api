@@ -127,6 +127,9 @@ jobs:
         run: |
           cd gitops
           
+          # Configurer Git remote avec le token
+          git remote set-url origin https://x-access-token:${{ secrets.GITOPS_PAT }}@github.com/${{ github.repository_owner }}/cliet-tableaux-angular-gitops.git
+          
           # Calculer le nouveau tag
           NEW_TAG="main-${GITHUB_SHA::7}"
           
