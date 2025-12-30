@@ -125,8 +125,20 @@ jobs:
 
       - name: Update image tag
         env:
-          GITOPS_TOKEN: ${secrets.GITOPS_PAT}
+          GITOPS_TOKEN: ${{secrets.GITOPS_PAT}}
         run: |
+          echo "🔍 Checking GITOPS_TOKEN..."
+          if [ -z "$GITOPS_TOKEN" ]; then
+          echo "❌ GITOPS_TOKEN is EMPTY!"
+          exit 1
+          else
+          echo "✅ GITOPS_TOKEN is set (length: ${#GITOPS_TOKEN})"
+          # Afficher les 4 premiers chars seulement
+          echo "Token starts with: ${GITOPS_TOKEN:0:4}..."
+          fi
+          
+          echo ""
+          echo "🔍 Current git remote:"
           cd gitops
           
           # Configurer Git remote avec le token
