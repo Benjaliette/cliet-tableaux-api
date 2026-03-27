@@ -1,7 +1,7 @@
 package com.cliet_tableaux.api.core.controllers;
 
 import com.cliet_tableaux.api.core.dtos.ContactDto;
-import com.cliet_tableaux.api.core.services.EmailService;
+import com.cliet_tableaux.api.core.services.MailService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,16 +13,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/contact")
 public class ContactController {
 
-    private final EmailService emailService;
+  private final MailService emailService;
 
-    public ContactController(EmailService emailService) {
-        this.emailService = emailService;
-    }
+  public ContactController(MailService emailService) {
+    this.emailService = emailService;
+  }
 
-    @PostMapping
-    public ResponseEntity<Void> submitContactForm(@Valid @RequestBody ContactDto contactDto) {
-        emailService.sendContactFormEmail(contactDto);
+  @PostMapping
+  public ResponseEntity<Void> submitContactForm(@Valid @RequestBody ContactDto contactDto) {
+    emailService.envoyerMessageContact(contactDto);
 
-        return ResponseEntity.accepted().build();
-    }
+    return ResponseEntity.accepted().build();
+  }
 }
