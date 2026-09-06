@@ -10,13 +10,16 @@ import com.cliet_tableaux.api.core.exceptions.ResourceNotFoundException;
 import com.cliet_tableaux.api.core.model.Order;
 import com.cliet_tableaux.api.core.model.Painting;
 import com.cliet_tableaux.api.core.model.User;
+import com.cloudinary.Cloudinary;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.stripe.param.checkout.SessionCreateParams.BillingAddressCollection;
 import com.stripe.param.checkout.SessionCreateParams.Mode;
+import java.util.List;
 import java.util.stream.Stream;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,15 +30,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderService {
   private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
+  // Limite Stripe : 500 caractères max par valeur de metadata (le nombre de clés, lui, reste
+  // fixe ici à 4 quel que soit le contenu de la commande, donc pas de risque sur la limite des
+  // 50 clés max par objet).
+  private static final int STRIPE_METADATA_VALUE_MAX_LENGTH = 500;
+
   private final OrderDao orderDao;
   private final PaintingDao paintingDao;
+  private final Cloudinary cloudinary;
 
   @Value("${app.frontend-url}")
   private String frontendUrl;
 
-  public OrderService(OrderDao orderDao, PaintingDao paintingDao) {
+  public OrderService(OrderDao orderDao, PaintingDao paintingDao, Cloudinary cloudinary) {
     this.orderDao = orderDao;
     this.paintingDao = paintingDao;
+    this.cloudinary = cloudinary;
   }
 
   // rollbackFor est nécessaire car StripeException est une exception checked :
@@ -56,6 +66,26 @@ public class OrderService {
     Order order = Order.create(request.amount(), request.address(), request.currency(), user, painting);
     order = orderDao.save(order);
 
+    // Order ne porte qu'un seul Painting (@OneToOne) : pas de commande multi-tableaux dans le
+    // modèle actuel. Formaté en liste ici uniquement pour produire les metadata "paintingIds"/
+    // "paintingTitles" au format demandé (valeurs séparées par des virgules), et rester valable
+    // sans changement si le modèle évoluait un jour vers plusieurs tableaux par commande.
+    List<Painting> orderPaintings = List.of(painting);
+
+    SessionCreateParams.LineItem.PriceData.ProductData.Builder productDataBuilder =
+        SessionCreateParams.LineItem.PriceData.ProductData.builder()
+            .setName(painting.getTitle());
+
+    String lineItemDescription = buildLineItemDescription(painting);
+    if (lineItemDescription != null) {
+      productDataBuilder.setDescription(lineItemDescription);
+    }
+
+    String imageUrl = buildPublicImageUrl(painting);
+    if (imageUrl != null) {
+      productDataBuilder.addImage(imageUrl);
+    }
+
     SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
         .setMode(Mode.PAYMENT)
         .setSuccessUrl(frontendUrl + "/checkout/success?session_id={CHECKOUT_SESSION_ID}")
@@ -67,17 +97,22 @@ public class OrderService {
                 SessionCreateParams.LineItem.PriceData.builder()
                     .setCurrency(order.getCurrency().toLowerCase())
                     .setUnitAmount(order.getAmountCents())
-                    .setProductData(
-                        SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                            .setName(painting.getTitle())
-                            .setDescription(painting.getDescription())
-                            .build()
-                    )
+                    .setProductData(productDataBuilder.build())
                     .build()
             )
                 .setQuantity(1L)
                 .build()
-        );
+        )
+        // Metadata sur la Session (dashboard Stripe / suivi), distinctes de la metadata orderId
+        // posée plus bas sur le PaymentIntent (utilisée par les webhooks, cf. handlePaymentIntentSucceeded).
+        .putMetadata("orderId", String.valueOf(order.getId()))
+        .putMetadata("userEmail", user.getEmail())
+        .putMetadata("paintingIds", joinForStripeMetadata(orderPaintings.stream()
+            .map(p -> String.valueOf(p.getId()))
+            .toList()))
+        .putMetadata("paintingTitles", joinForStripeMetadata(orderPaintings.stream()
+            .map(Painting::getTitle)
+            .toList()));
 
     // Ajouter pays autorisés pour la collecte de l'adresse de shipping
     SessionCreateParams.ShippingAddressCollection.Builder shippingBuilder =
@@ -107,6 +142,48 @@ public class OrderService {
     orderDao.save(order);
 
     return new CheckoutSessionResponse(session.getId(), session.getUrl(), order.getId());
+  }
+
+  // Painting ne porte pas de champ "artiste" (catalogue mono-artiste, pas de notion d'auteur par
+  // œuvre) : on affiche donc la technique et les dimensions, seules données descriptives
+  // disponibles sur l'entité, plutôt que le texte libre `description` (déjà utilisé ailleurs).
+  private static String buildLineItemDescription(Painting painting) {
+    StringBuilder description = new StringBuilder();
+    if (StringUtils.isNotBlank(painting.getTechnique())) {
+      description.append(painting.getTechnique());
+    }
+    if (painting.getWidth() != null && painting.getHeight() != null) {
+      if (description.length() > 0) {
+        description.append(" — ");
+      }
+      description.append(painting.getWidth()).append("x").append(painting.getHeight()).append("cm");
+    }
+    return description.length() > 0 ? description.toString() : null;
+  }
+
+  // `imagePublicId` est l'identifiant Cloudinary de l'image (cf. CloudinaryConfig/CloudinaryController),
+  // pas une URL : il faut le résoudre en URL absolue via le SDK Cloudinary pour que Stripe Checkout
+  // puisse l'afficher (Stripe exige une URL publique valide, pas un chemin relatif ou un id).
+  private String buildPublicImageUrl(Painting painting) {
+    if (StringUtils.isBlank(painting.getImagePublicId())) {
+      return null;
+    }
+    return cloudinary.url().secure(true).generate(painting.getImagePublicId());
+  }
+
+  // Tronque proprement sur la dernière virgule complète plutôt qu'au milieu d'un id/titre, pour
+  // rester sous la limite Stripe de 500 caractères par valeur de metadata si une commande venait
+  // à porter beaucoup d'articles.
+  private static String joinForStripeMetadata(List<String> values) {
+    String joined = String.join(",", values);
+    if (joined.length() <= STRIPE_METADATA_VALUE_MAX_LENGTH) {
+      return joined;
+    }
+
+    String suffix = ",...";
+    int limit = STRIPE_METADATA_VALUE_MAX_LENGTH - suffix.length();
+    int cut = joined.lastIndexOf(',', limit);
+    return (cut > 0 ? joined.substring(0, cut) : joined.substring(0, limit)) + suffix;
   }
 
   public void handleCheckoutSessionCompleted(Session session) {
