@@ -1,5 +1,8 @@
 HELP.md
+API_CONTRACT.md
+ORDER_API_STATUS.md
 target/
+logs/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

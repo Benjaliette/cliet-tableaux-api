@@ -29,21 +29,28 @@ public class Order extends BaseEntity {
     private PaymentStatutEnum state;
 
     @Column(name = "amount_cents")
-    private final Long amountCents;
+    private Long amountCents;
 
     @Column(name = "address")
-    private final String address;
+    private String address;
 
     @Column(name = "currency")
-    private final String currency;
+    private String currency;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
-    private final User user;
+    private User user;
 
     @OneToOne
     @JoinColumn(name = "painting_id")
-    private final Painting painting;
+    private Painting painting;
+
+    // Constructeur sans argument requis par JPA/Hibernate pour recharger une
+    // Order existante depuis la base (findById, findByStripeSessionId, etc.) :
+    // sans lui, toute lecture d'un Order déjà persisté lève
+    // "No default constructor for entity 'Order'" (cassait les handlers webhook).
+    protected Order() {
+    }
 
     private Order(PaymentStatutEnum state, Long amountCents, String address, String currency, User user,
         Painting painting) {

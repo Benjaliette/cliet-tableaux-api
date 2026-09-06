@@ -3,6 +3,7 @@ package com.cliet_tableaux.api.config;
 import com.cliet_tableaux.api.core.filter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -29,9 +30,14 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                                // TODO : .requestMatchers("/api/v1/auth/**").permitAll()
+                                // Public : Stripe ne peut pas fournir de JWT, la signature du payload
+                                // (vérifiée dans WebhookService via le secret Stripe) fait office d'authentification.
+                                .requestMatchers(HttpMethod.POST, "/api/v1/orders/stripe-webhooks").permitAll()
+                                // Route de commande : le userId est déduit du principal authentifié, jamais du body.
+                                .requestMatchers("/api/v1/orders/**").authenticated()
+                                // TODO : le reste de l'API (auth, paintings, users, contact, cloudinary) est
+                                // encore entièrement public — non traité ici, périmètre limité aux commandes.
                                 .anyRequest().permitAll()
-                        // TODO : .anyRequest().authenticated() // La version sécurisée
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)

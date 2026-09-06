@@ -20,6 +20,7 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(List.of("http://localhost:4200",
+                "http://localhost:3000",
             "https://www.cliet-tableaux.com",
             "https://cliet-tableaux.com"));
         config.setAllowedMethods(
