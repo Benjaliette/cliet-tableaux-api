@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -96,6 +97,36 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND.value(), LocalDateTime.now());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(UnsupportedFileTypeException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedFileType(UnsupportedFileTypeException e) {
+        logger.debug("Unsupported file type error handled: {}", e.getMessage());
+
+        ErrorResponse error = new ErrorResponse(e.getMessage(), HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(), LocalDateTime.now());
+
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(error);
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimitExceeded(RateLimitExceededException e) {
+        logger.debug("Rate limit exceeded error handled: {}", e.getMessage());
+
+        ErrorResponse error = new ErrorResponse(e.getMessage(), HttpStatus.TOO_MANY_REQUESTS.value(), LocalDateTime.now());
+
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
+    }
+
+    // Filet de sécurité si le fichier envoyé dépasse la limite servlet (spring.servlet.multipart.max-file-size),
+    // définie volontairement au-dessus de la limite métier de 5 Mo appliquée dans ReferenceImageValidator
+    // pour que ce soit ce dernier qui produise le message d'erreur métier dans le cas normal.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
+        logger.debug("Max upload size exceeded error handled: {}", e.getMessage());
+
+        ErrorResponse error = new ErrorResponse("Le fichier envoyé dépasse la taille maximale autorisée", HttpStatus.PAYLOAD_TOO_LARGE.value(), LocalDateTime.now());
+
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(error);
     }
 
     @ExceptionHandler(Exception.class)
