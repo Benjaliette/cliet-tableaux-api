@@ -1,26 +1,27 @@
 package com.cliet_tableaux.api.core.mappers;
 
-import com.cliet_tableaux.api.core.dtos.UserDto;
+import com.cliet_tableaux.api.core.dtos.SignupRequestDto;
+import com.cliet_tableaux.api.core.dtos.UserResponseDto;
 import com.cliet_tableaux.api.core.model.User;
-import org.mapstruct.InheritInverseConfiguration;
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface UserMapper {
     /**
-     * Convertit une entité User en DTO UserDto.
+     * Convertit une entité User en DTO de sortie UserResponseDto.
      *
      * @param user L'entité {@link User}
-     * @return Le DTO correspondant
+     * @return Le DTO de sortie correspondant (jamais de password)
      */
-    UserDto toDto(User user);
+    UserResponseDto toDto(User user);
 
     /**
-     * Convertit un DTO UserDto en entité User.
+     * Convertit un DTO d'inscription en entité User. SignupRequestDto ne porte ni id ni admin :
+     * ces champs restent donc à leur valeur par défaut (id = null, généré par JPA à la
+     * persistance ; admin = false), jamais pilotés par le client.
      *
-     * @param userDto Le DTO {@link UserDto}
+     * @param signupRequestDto Le DTO {@link SignupRequestDto}
      * @return L'entité JPA correspondante
      */
-    @InheritInverseConfiguration(name = "toDto")
-    User toEntity(UserDto userDto);
+    User toEntity(SignupRequestDto signupRequestDto);
 }

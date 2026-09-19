@@ -2,7 +2,8 @@ package com.cliet_tableaux.api.core.controllers;
 
 import com.cliet_tableaux.api.core.dtos.AuthDto;
 import com.cliet_tableaux.api.core.dtos.AuthResponse;
-import com.cliet_tableaux.api.core.dtos.UserDto;
+import com.cliet_tableaux.api.core.dtos.LoginRequestDto;
+import com.cliet_tableaux.api.core.dtos.SignupRequestDto;
 import com.cliet_tableaux.api.core.services.AuthenticationService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,15 +26,15 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody UserDto userDto, HttpServletResponse response) {
-        AuthDto authDto = authService.login(userDto);
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequestDto loginRequestDto, HttpServletResponse response) {
+        AuthDto authDto = authService.login(loginRequestDto);
         setRefreshTokenCookie(response, authDto.refreshToken());
         return ResponseEntity.ok(new AuthResponse(authDto.user(), authDto.accessToken()));
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<AuthResponse> signup(@RequestBody UserDto userDto, HttpServletResponse response) {
-        AuthDto authDto = authService.register(userDto);
+    public ResponseEntity<AuthResponse> signup(@RequestBody SignupRequestDto signupRequestDto, HttpServletResponse response) {
+        AuthDto authDto = authService.register(signupRequestDto);
         setRefreshTokenCookie(response, authDto.refreshToken());
         return new ResponseEntity<>(new AuthResponse(authDto.user(), authDto.accessToken()), HttpStatus.CREATED);
     }

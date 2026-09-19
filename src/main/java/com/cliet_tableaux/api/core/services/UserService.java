@@ -1,7 +1,7 @@
 package com.cliet_tableaux.api.core.services;
 
 import com.cliet_tableaux.api.core.daos.UserDao;
-import com.cliet_tableaux.api.core.dtos.UserDto;
+import com.cliet_tableaux.api.core.dtos.UserResponseDto;
 import com.cliet_tableaux.api.core.exceptions.ResourceNotFoundException;
 import com.cliet_tableaux.api.core.mappers.UserMapper;
 import com.cliet_tableaux.api.core.model.User;
@@ -31,7 +31,7 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
     }
 
-    public List<UserDto> findAll() {
+    public List<UserResponseDto> findAll() {
         return userDao.findAll().stream().map(userMapper::toDto).toList();
     }
 

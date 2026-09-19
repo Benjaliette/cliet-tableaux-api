@@ -1,6 +1,6 @@
 package com.cliet_tableaux.api.core.controllers;
 
-import com.cliet_tableaux.api.core.dtos.UserDto;
+import com.cliet_tableaux.api.core.dtos.UserResponseDto;
 import com.cliet_tableaux.api.core.services.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +19,7 @@ public class UserController {
     }
 
     @GetMapping
-    public ResponseEntity<List<UserDto>> getAllUsers() {
+    public ResponseEntity<List<UserResponseDto>> getAllUsers() {
         return ResponseEntity.ok(userService.findAll());
     }
 }

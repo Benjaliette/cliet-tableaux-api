@@ -1,7 +1,8 @@
 package com.cliet_tableaux.api.core.services;
 
 import com.cliet_tableaux.api.core.dtos.AuthDto;
-import com.cliet_tableaux.api.core.dtos.UserDto;
+import com.cliet_tableaux.api.core.dtos.LoginRequestDto;
+import com.cliet_tableaux.api.core.dtos.SignupRequestDto;
 import com.cliet_tableaux.api.core.exceptions.AuthenticationException;
 import com.cliet_tableaux.api.core.exceptions.ExpiredTokenException;
 import com.cliet_tableaux.api.core.exceptions.ResourceNotFoundException;
@@ -39,7 +40,7 @@ public class AuthenticationService {
     }
 
     // LOGIN
-    public AuthDto login(UserDto request) {
+    public AuthDto login(LoginRequestDto request) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -62,13 +63,21 @@ public class AuthenticationService {
     }
 
     // REGISTER
-    public AuthDto register(UserDto request) {
-        try {
-            if (userService.existsByEmail(request.email())) {
-                throw new UserAlreadyExistsException("Email already exists");
-            }
+    public AuthDto register(SignupRequestDto request) {
+        // Sortie volontaire du bloc try ci-dessous : UserAlreadyExistsException est une erreur
+        // métier attendue (email déjà pris), avec son propre handler dans GlobalExceptionHandler
+        // (-> 409). La lever depuis l'intérieur du try la ferait intercepter par le catch (Exception e)
+        // générique ci-dessous et la ré-envelopper en AuthenticationException, qui elle tombe dans
+        // le handler générique -> 500 au lieu du 409 attendu.
+        if (userService.existsByEmail(request.email())) {
+            throw new UserAlreadyExistsException("Email already exists");
+        }
 
+        try {
             User newUser = userMapper.toEntity(request);
+            // Défense en profondeur : SignupRequestDto ne porte déjà plus de champ admin, mais on
+            // force explicitement la valeur ici pour ne jamais dépendre uniquement du DTO d'entrée.
+            newUser.setAdmin(false);
             String encryptedPassword = passwordEncoder.encode(request.password());
             newUser.setPassword(encryptedPassword);
 
@@ -76,7 +85,7 @@ public class AuthenticationService {
 
             return buildAuthDto(savedUser);
         } catch (Exception e) {
-            logger.error("Unexpected error during login for user: {}", request.email(), e);
+            logger.error("Unexpected error during registration for user: {}", request.email(), e);
             throw new AuthenticationException("Login failed", e);
         }
     }
