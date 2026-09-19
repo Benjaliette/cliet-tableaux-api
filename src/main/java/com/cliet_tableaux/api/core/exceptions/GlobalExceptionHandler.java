@@ -42,15 +42,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
-    @ExceptionHandler(RegistrationException.class)
-    public ResponseEntity<ErrorResponse> handleRegistration(RegistrationException e) {
-        logger.debug("Registration error handled: {}", e.getMessage());
-
-        ErrorResponse error = new ErrorResponse("Registration failed", HttpStatus.BAD_REQUEST.value(), LocalDateTime.now());
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-    }
-
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponse> handleValidation(ValidationException e) {
         logger.debug("Validation error handled: {}", e.getMessage());
@@ -60,10 +51,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
-    // Sans ce handler, un échec de @Valid sur un @RequestBody (MethodArgumentNotValidException)
-    // tombe dans handleGeneral ci-dessous et renvoie 500 au lieu de 400 : ce ControllerAdvice
-    // définit son propre handler générique Exception.class, qui prime sur le traitement par
-    // défaut de Spring MVC pour les erreurs de validation.
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
@@ -86,10 +73,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
-    // Sans ce handler, ResourceNotFoundException (Painting/User introuvable, notamment sur les
-    // routes de commande) est bien traduite en 404 grâce à son @ResponseStatus, mais avec le body
-    // d'erreur par défaut de Spring Boot (timestamp/status/error/path) plutôt que le format
-    // ErrorResponse utilisé partout ailleurs dans l'API.
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException e) {
         logger.debug("Resource not found error handled: {}", e.getMessage());
@@ -117,9 +100,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
     }
 
-    // Filet de sécurité si le fichier envoyé dépasse la limite servlet (spring.servlet.multipart.max-file-size),
-    // définie volontairement au-dessus de la limite métier de 5 Mo appliquée dans ReferenceImageValidator
-    // pour que ce soit ce dernier qui produise le message d'erreur métier dans le cas normal.
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
         logger.debug("Max upload size exceeded error handled: {}", e.getMessage());

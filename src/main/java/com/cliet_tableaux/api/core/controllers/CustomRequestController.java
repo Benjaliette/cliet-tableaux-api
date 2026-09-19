@@ -17,17 +17,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Duration;
-
 @RestController
 @RequestMapping("/api/v1/custom-requests")
 public class CustomRequestController {
-
-    // Anti-spam basique : au-delà de ce nombre de demandes pour la même IP sur la fenêtre
-    // ci-dessous, les requêtes suivantes sont rejetées (429). Voir RateLimiterService pour les
-    // limites de cette approche (en mémoire, par instance).
-    private static final int MAX_REQUESTS = 5;
-    private static final Duration WINDOW = Duration.ofMinutes(15);
 
     private final MailService mailService;
     private final RateLimiterService rateLimiterService;
@@ -44,8 +36,8 @@ public class CustomRequestController {
             HttpServletRequest request) {
 
         String clientIp = request.getRemoteAddr();
-        if (!rateLimiterService.isAllowed("ip:" + clientIp, MAX_REQUESTS, WINDOW)
-                || !rateLimiterService.isAllowed("email:" + customRequestDto.email(), MAX_REQUESTS, WINDOW)) {
+        if (!rateLimiterService.isAllowed("ip:" + clientIp, RateLimiterService.DEFAULT_MAX_REQUESTS, RateLimiterService.DEFAULT_WINDOW)
+                || !rateLimiterService.isAllowed("email:" + customRequestDto.email(), RateLimiterService.DEFAULT_MAX_REQUESTS, RateLimiterService.DEFAULT_WINDOW)) {
             throw new RateLimitExceededException("Trop de demandes envoyées récemment, merci de réessayer plus tard");
         }
 

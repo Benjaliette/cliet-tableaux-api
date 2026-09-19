@@ -33,11 +33,15 @@ public class JwtService {
     }
 
     public String generateAccessToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails, accessTokenExpiration);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("type", "access");
+        return generateToken(claims, userDetails, accessTokenExpiration);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails, refreshTokenExpiration);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("type", "refresh");
+        return generateToken(claims, userDetails, refreshTokenExpiration);
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails, long expiration) {
@@ -52,9 +56,15 @@ public class JwtService {
                 .compact();
     }
 
+    public String extractTokenType(String token) {
+        return extractClaim(token, claims -> claims.get("type", String.class));
+    }
+
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+        return username.equals(userDetails.getUsername())
+                && !isTokenExpired(token)
+                && "access".equals(extractTokenType(token));
     }
 
     public boolean isTokenExpired(String token) {

@@ -26,8 +26,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ExtendWith(MockitoExtension.class)
 class CustomRequestControllerTest {
-
-    // Signature JPEG minimale valide (magic bytes FF D8 FF), suffisante pour ReferenceImageValidator.
     private static final byte[] JPEG_BYTES = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00, 0x01, 0x02};
 
     @InjectMocks
@@ -92,10 +90,6 @@ class CustomRequestControllerTest {
                         .param("description", "Un portrait de mon chat"))
                 .andExpect(status().isBadRequest());
     }
-
-    // Le rejet des fichiers dont le type MIME réel n'est pas une image supportée est testé
-    // directement sur ReferenceImageValidator (voir ReferenceImageValidatorTest) : ici,
-    // MailService est mocké, donc la validation réelle du fichier ne s'exécute pas.
 
     @Test
     void submitCustomRequest_whenRateLimited_returns429() throws Exception {

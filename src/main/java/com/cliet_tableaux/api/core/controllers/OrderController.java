@@ -39,9 +39,6 @@ public class OrderController {
         return new ResponseEntity<>(orderService.createCheckoutSession(currentUser, checkoutSessionRequest), HttpStatus.CREATED);
     }
 
-    // Endpoint public : Stripe ne peut pas s'authentifier comme un utilisateur classique.
-    // La sécurité est assurée par la vérification de signature Stripe dans WebhookService
-    // (Webhook.constructEvent avec le secret partagé) plutôt que par un principal Spring Security.
     @PostMapping("/stripe-webhooks")
     public ResponseEntity<Void> handleStripeWebhook(
         @RequestBody String payload,
@@ -51,12 +48,9 @@ public class OrderController {
             webhookService.handleWebhook(payload, sigHeader);
             return ResponseEntity.ok().build();
         } catch (SignatureVerificationException e) {
-            // Signature invalide : payload rejeté définitivement, Stripe ne doit pas retenter.
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             log.error("Erreur traitement webhook Stripe", e);
-            // Erreur inattendue (order introuvable, désérialisation...) : 500 pour que Stripe
-            // retente l'envoi du webhook plus tard, au lieu d'un 400 uniforme qui masquait la différence.
             return ResponseEntity.internalServerError().build();
         }
     }

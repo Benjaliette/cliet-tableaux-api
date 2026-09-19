@@ -63,8 +63,6 @@ class ReferenceImageValidatorTest {
         assertThat(attachment.getFileName()).endsWith(".webp");
     }
 
-    // Le type réel des octets (texte brut) prime sur l'extension et le Content-Type déclarés,
-    // tous deux falsifiables.
     @Test
     void validateAndBuildAttachment_withSpoofedExtensionAndContentType_isRejected() {
         MockMultipartFile fakeImage = new MockMultipartFile(

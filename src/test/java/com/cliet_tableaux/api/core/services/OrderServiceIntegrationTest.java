@@ -53,10 +53,6 @@ class OrderServiceIntegrationTest {
     @Autowired
     private PaintingDao paintingDao;
 
-    // Reproduit le scénario du §3 (Phase 3) : la session Stripe échoue APRÈS que
-    // l'Order ait été sauvegardé une première fois. Sans @Transactional(rollbackFor = StripeException.class),
-    // StripeException étant une exception checked, Spring ne fait pas rollback par défaut
-    // et l'Order resterait en base, orpheline (PENDING, sans checkoutSessionId).
     @Test
     void createCheckoutSession_rollsBackOrder_whenStripeSessionCreationFails() {
         User user = new User();
@@ -83,16 +79,11 @@ class OrderServiceIntegrationTest {
                     () -> orderService.createCheckoutSession(finalUser, request));
         }
 
-        // Comparaison ciblée sur ce Painting plutôt que orderDao.findAll() global :
-        // la base Testcontainers est partagée entre les méthodes de test de cette classe.
         boolean orphanOrderExists = orderDao.findAll().stream()
                 .anyMatch(order -> order.getPainting().getId().equals(paintingId));
         assertThat(orphanOrderExists).isFalse();
     }
 
-    // Chemin nominal : vérifie que l'Order persisté est bien relisible depuis la base
-    // (couvre au passage le constructeur sans argument requis par Hibernate) et que
-    // @Transactional ne casse pas le flux existant.
     @Test
     void createCheckoutSession_persistsOrder_whenStripeSessionCreationSucceeds() throws StripeException {
         User user = new User();
@@ -126,8 +117,6 @@ class OrderServiceIntegrationTest {
         assertThat(persisted.get().getCheckoutSessionId()).isEqualTo("cs_test_123");
     }
 
-    // Anti-survente (Phase 4) : un Painting déjà marqué sell=true doit être rejeté
-    // avant tout appel Stripe, sans créer de commande.
     @Test
     void createCheckoutSession_rejectsAlreadySoldPainting() {
         User user = new User();
@@ -154,15 +143,6 @@ class OrderServiceIntegrationTest {
         assertThat(orderCreated).isFalse();
     }
 
-    // Automatisation du stock : payment_intent.succeeded doit marquer le Painting comme vendu
-    // (sell=true), passer l'Order à SUCCEEDED, et être idempotent si Stripe rejoue le même
-    // événement webhook (cas fréquent en cas de retry) — sans planter ni re-agir sur le Painting.
-    //
-    // Couvre aussi la régression diagnostiquée le 2026-09-06 : Stripe ne garantit pas que
-    // checkout.session.completed arrive avant payment_intent.succeeded. Ce test appelle
-    // handlePaymentIntentSucceeded sur un Order dont paymentIntentId n'a JAMAIS été renseigné
-    // (checkout.session.completed n'est pas simulé ici) : la commande doit quand même être
-    // retrouvée via la metadata orderId posée sur le PaymentIntent à la création de la session.
     @Test
     void handlePaymentIntentSucceeded_marksPaintingSold_andIsIdempotentOnWebhookRetry() {
         User user = new User();
@@ -183,9 +163,6 @@ class OrderServiceIntegrationTest {
         Long orderId = order.getId();
         Long paintingId = painting.getId();
 
-        // La metadata orderId (posée sur le PaymentIntent dès createCheckoutSession) est le seul
-        // lien utilisé par handlePaymentIntentSucceeded : pas besoin que checkout.session.completed
-        // soit passé avant pour renseigner paymentIntentId (cf. bug de race diagnostiqué le 2026-09-06).
         PaymentIntent paymentIntent = Mockito.mock(PaymentIntent.class);
         Mockito.when(paymentIntent.getId()).thenReturn("pi_test_webhook");
         Mockito.when(paymentIntent.getMetadata()).thenReturn(Map.of("orderId", String.valueOf(orderId)));
@@ -195,17 +172,12 @@ class OrderServiceIntegrationTest {
         assertThat(orderDao.findById(orderId).orElseThrow().getState()).isEqualTo(PaymentStatutEnum.SUCCEEDED);
         assertThat(paintingDao.findById(paintingId).orElseThrow().isSell()).isTrue();
 
-        // Rejeu du même événement (Stripe retry) : ne doit pas planter ni changer l'état.
         orderService.handlePaymentIntentSucceeded(paymentIntent);
 
         assertThat(orderDao.findById(orderId).orElseThrow().getState()).isEqualTo(PaymentStatutEnum.SUCCEEDED);
         assertThat(paintingDao.findById(paintingId).orElseThrow().isSell()).isTrue();
     }
 
-    // Sécurité supplémentaire : si le Painting a déjà été vendu par une AUTRE commande avant que
-    // le webhook de celle-ci n'arrive (double vente due à une race condition à la création), le
-    // traitement ne doit pas planter et ne doit pas "re-vendre" — le paiement reste enregistré
-    // (SUCCEEDED) mais le stock n'est pas retouché une seconde fois.
     @Test
     void handlePaymentIntentSucceeded_doesNotFailWhenPaintingAlreadySoldByAnotherOrder() {
         User user = new User();

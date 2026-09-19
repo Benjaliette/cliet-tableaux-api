@@ -18,9 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-// Vérifie la distinction introduite en Phase 5 : une signature Stripe invalide (400, définitif,
-// Stripe ne doit pas retenter) est désormais différenciée d'une erreur inattendue (500, Stripe
-// retente l'envoi du webhook plus tard) — avant, tout tombait uniformément en 400.
 @ExtendWith(MockitoExtension.class)
 class OrderControllerWebhookTest {
 

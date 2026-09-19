@@ -27,11 +27,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-// Vérifie que la refonte UserDto -> SignupRequestDto / LoginRequestDto / UserResponseDto
-// (AUDIT_BACKEND.md, findings #1, #2, #5) élimine bien à la racine :
-// - le mass assignment de l'id client à l'inscription (écrasement d'un compte existant),
-// - le mass assignment du champ admin à l'inscription (auto-élévation de privilèges),
-// - la fuite du hash de mot de passe dans les réponses JSON exposant un utilisateur.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -66,9 +61,6 @@ class AuthenticationControllerIntegrationTest {
         return userDao.save(user);
     }
 
-    // Finding #1 : un attaquant qui connaît (ou devine, les id étant séquentiels) l'id d'un
-    // compte existant et envoie ce même id dans le payload de signup ne doit jamais pouvoir
-    // écraser ce compte (ancien comportement : merge() JPA sur id non-null).
     @Test
     void signup_withIdOfExistingUser_doesNotOverwriteExistingUser() throws Exception {
         User existingUser = persistUser("victime@example.com", "mot-de-passe-original", false);
@@ -87,9 +79,6 @@ class AuthenticationControllerIntegrationTest {
                 .andReturn();
 
         int status = result.getResponse().getStatus();
-        // Soit la requête réussit en créant un NOUVEL utilisateur (le "id" du payload est
-        // ignoré : SignupRequestDto ne porte plus ce champ), soit elle est rejetée (4xx).
-        // Dans tous les cas, le compte existant ne doit jamais être altéré.
         if (status >= 200 && status < 300) {
             JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
             long createdId = body.get("user").get("id").asLong();
@@ -104,7 +93,6 @@ class AuthenticationControllerIntegrationTest {
         assertThat(reloaded.isAdmin()).isFalse();
     }
 
-    // Finding #2 : un client ne doit jamais pouvoir s'auto-attribuer admin=true à l'inscription.
     @Test
     void signup_withAdminTrueInPayload_createsNonAdminUser() throws Exception {
         Map<String, Object> maliciousPayload = new LinkedHashMap<>();
@@ -123,11 +111,6 @@ class AuthenticationControllerIntegrationTest {
         assertThat(created.isAdmin()).isFalse();
     }
 
-    // Finding #3 : un signup avec un email déjà utilisé doit renvoyer 409 (via
-    // UserAlreadyExistsException + son handler dédié dans GlobalExceptionHandler), pas 500.
-    // Avant correctif, l'exception était avalée par le catch (Exception e) générique de
-    // register() et ré-enveloppée en AuthenticationException, qui tombe dans le handler
-    // générique -> 500.
     @Test
     void signup_withAlreadyExistingEmail_returns409() throws Exception {
         persistUser("deja-inscrit@example.com", "mot-de-passe-existant", false);
@@ -149,8 +132,6 @@ class AuthenticationControllerIntegrationTest {
         assertThat(body.get("message").asText()).isEqualTo("Email already exists");
     }
 
-    // Finding #5 : aucune réponse JSON exposant un utilisateur (signup, login, refresh,
-    // GET /api/v1/users) ne doit jamais contenir le champ "password".
     @Test
     void authResponses_neverExposePasswordField() throws Exception {
         Map<String, Object> signupPayload = new LinkedHashMap<>();
@@ -179,9 +160,6 @@ class AuthenticationControllerIntegrationTest {
 
         assertThat(loginResult.getResponse().getContentAsString()).doesNotContain("\"password\"");
 
-        // Utilise le cookie du login, pas celui du signup : login() fait tourner le refresh
-        // token en base (un seul refresh token valide par utilisateur à la fois), donc le
-        // cookie émis par signup() est déjà périmé à ce stade.
         Cookie refreshCookie = loginResult.getResponse().getCookie("refresh_token");
         assertThat(refreshCookie).isNotNull();
 
@@ -192,8 +170,6 @@ class AuthenticationControllerIntegrationTest {
 
         assertThat(refreshResult.getResponse().getContentAsString()).doesNotContain("\"password\"");
 
-        // GET /api/v1/users est désormais réservé à ROLE_ADMIN (AUDIT_BACKEND.md, finding #4) :
-        // il faut un token admin pour l'atteindre, ce n'est plus une route publique.
         User admin = persistUser("admin-for-users-check@example.com", "mot-de-passe-admin", true);
         String adminToken = jwtService.generateAccessToken(admin);
 

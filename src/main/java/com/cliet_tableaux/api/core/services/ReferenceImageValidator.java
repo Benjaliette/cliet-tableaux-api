@@ -10,10 +10,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Base64;
 
-// Valide l'image de référence jointe à une demande de tableau sur-mesure et la convertit en
-// pièce jointe Resend. Le type MIME est déterminé par lecture des octets de signature du
-// fichier (magic bytes), jamais par le nom de fichier ou le Content-Type déclaré par le
-// client, qui peuvent tous deux être falsifiés.
 @Service
 public class ReferenceImageValidator {
 
@@ -26,7 +22,6 @@ public class ReferenceImageValidator {
     private static final byte[] RIFF_MAGIC = {'R', 'I', 'F', 'F'};
     private static final byte[] WEBP_MAGIC = {'W', 'E', 'B', 'P'};
 
-    // Retourne null si aucune image n'a été fournie (champ optionnel).
     public Attachment validateAndBuildAttachment(MultipartFile referenceImage) {
         if (referenceImage == null || referenceImage.isEmpty()) {
             return null;
@@ -82,9 +77,6 @@ public class ReferenceImageValidator {
         return true;
     }
 
-    // Le nom d'origine n'est utilisé que comme base cosmétique : il est nettoyé des caractères
-    // de contrôle (CR/LF compris, pour éviter toute injection dans les en-têtes de l'email) et
-    // l'extension est forcée à celle réellement détectée, pas à celle fournie par le client.
     private String sanitizeFileName(String originalFileName, String detectedExtension) {
         String base = "reference-image";
         if (originalFileName != null) {

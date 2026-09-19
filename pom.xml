@@ -143,6 +143,14 @@
             <artifactId>resend-java</artifactId>
             <version>3.1.0</version>
         </dependency>
+
+        <!-- Cache borné utilisé par RateLimiterService (AUDIT_BACKEND.md, finding #10) pour
+             éviter la fuite mémoire d'une ConcurrentHashMap qui ne se vide jamais. Version gérée
+             par spring-boot-starter-parent (dependency management), pas besoin de la préciser. -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

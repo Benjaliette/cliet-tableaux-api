@@ -16,9 +16,7 @@ public interface UserMapper {
     UserResponseDto toDto(User user);
 
     /**
-     * Convertit un DTO d'inscription en entité User. SignupRequestDto ne porte ni id ni admin :
-     * ces champs restent donc à leur valeur par défaut (id = null, généré par JPA à la
-     * persistance ; admin = false), jamais pilotés par le client.
+     * Convertit un DTO d'inscription en entité User
      *
      * @param signupRequestDto Le DTO {@link SignupRequestDto}
      * @return L'entité JPA correspondante

@@ -21,15 +21,6 @@ public class User extends BaseEntity implements UserDetails {
     @Column(name = "encrypted_password")
     private String encryptedPassword;
 
-    @Column(name = "latitude")
-    private Double latitude;
-
-    @Column(name = "longitude")
-    private Double longitude;
-
-    @Column(name = "address")
-    private String address;
-
     @Column(name = "first_name")
     private String firstName;
 
@@ -45,10 +36,6 @@ public class User extends BaseEntity implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Order> orders;
 
-    // Préfixe ROLE_ requis par Spring Security : hasRole("ADMIN") dans SecurityConfig compare
-    // implicitement à l'autorité "ROLE_ADMIN". Sans ce préfixe, hasRole("ADMIN") ne reconnaît
-    // jamais un admin (échec silencieux, aucune erreur au démarrage ni à l'exécution).
-    // Voir AUDIT_BACKEND.md, finding #9.
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (this.admin) {
@@ -98,30 +85,6 @@ public class User extends BaseEntity implements UserDetails {
 
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public Double getLatitude() {
-        return latitude;
-    }
-
-    public void setLatitude(Double latitude) {
-        this.latitude = latitude;
-    }
-
-    public Double getLongitude() {
-        return longitude;
-    }
-
-    public void setLongitude(Double longitude) {
-        this.longitude = longitude;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
     }
 
     public String getFirstName() {

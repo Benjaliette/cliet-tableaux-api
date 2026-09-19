@@ -30,10 +30,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-// Vérifie AUDIT_BACKEND.md, findings #4 (endpoints publics à restreindre) et #9 (préfixe
-// ROLE_ requis pour que hasRole("ADMIN") fonctionne réellement) : écriture du catalogue
-// (POST/PUT/DELETE /paintings), GET /users et POST /cloudinary-signature sont désormais
-// réservés à ROLE_ADMIN.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -78,8 +74,6 @@ class AdminOnlyEndpointsIntegrationTest {
         return paintingDao.save(painting);
     }
 
-    // Les 5 requêtes désormais réservées à ROLE_ADMIN. Reconstruites à chaque appel : le body
-    // JSON d'un MockHttpServletRequestBuilder ne peut être consommé qu'une fois exécuté.
     private List<MockHttpServletRequestBuilder> adminOnlyRequests(Long existingPaintingId) throws Exception {
         PaintingDto paintingToCreate = new PaintingDto(null, "Nouveau tableau", "Description", "Huile sur toile",
                 new DimensionDto(50, 70), false, "1000", "EUR", null, null);
@@ -129,16 +123,12 @@ class AdminOnlyEndpointsIntegrationTest {
         String token = jwtService.generateAccessToken(admin);
         Painting painting = persistPainting("Utilisateur admin");
 
-        // Exécutées dans l'ordre : POST (crée un autre tableau), PUT (modifie "painting"),
-        // DELETE (supprime ce même "painting", en dernier des requêtes touchant ce tableau).
         for (MockHttpServletRequestBuilder request : adminOnlyRequests(painting.getId())) {
             mockMvc.perform(request.header("Authorization", "Bearer " + token))
                     .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotIn(401, 403));
         }
     }
 
-    // Sanity check : finding #4 ne restreint que l'écriture, la consultation du catalogue doit
-    // rester publique, avec ou sans authentification.
     @Test
     void paintingCatalog_readEndpoints_remainPublic() throws Exception {
         Painting painting = persistPainting("Consultable par tous");

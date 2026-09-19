@@ -33,7 +33,7 @@ class PaintingServiceTest {
     private PaintingService paintingService;
 
     @Test
-    void findById_whenPaintingExists_shouldReturnPaintingRecord() {
+    void findAll_whenPaintingsExist_shouldReturnAllPaintings() {
         // GIVEN (Arrange)
         Painting painting = PaintingTestDataFactory.aPaintingEntity();
 

@@ -2,7 +2,6 @@ package com.cliet_tableaux.api.core.services;
 
 import com.cliet_tableaux.api.core.dtos.ContactDto;
 import com.cliet_tableaux.api.core.dtos.CustomRequestDto;
-import com.cliet_tableaux.api.core.exceptions.GlobalExceptionHandler;
 import com.resend.Resend;
 import com.resend.core.exception.ResendException;
 import com.resend.services.emails.model.Attachment;
@@ -13,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.HtmlUtils;
 
 @Service
 public class MailService {
@@ -20,7 +20,7 @@ public class MailService {
   private final Resend resend;
   private final ReferenceImageValidator referenceImageValidator;
 
-  private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+  private static final Logger logger = LoggerFactory.getLogger(MailService.class);
 
   @Value("${mail.contact.destinataire}")
   private String destinataire;
@@ -46,11 +46,11 @@ public class MailService {
       CreateEmailResponse data = resend.emails().send(params);
       logger.info("Email envoyé, id : {}", data.getId());
     } catch (ResendException e) {
-      logger.info("Erreur envoi email", e);
+      logger.error("Erreur envoi email", e);
     }
   }
 
-  private String construireCorpsEmail(ContactDto dto) {
+  String construireCorpsEmail(ContactDto dto) {
     return """
         <html>
             <body>
@@ -61,13 +61,12 @@ public class MailService {
                 <p>%s</p>
             </body>
         </html>
-        """.formatted(dto.name(), dto.email(), dto.message());
+        """.formatted(
+        HtmlUtils.htmlEscape(dto.name()),
+        HtmlUtils.htmlEscape(dto.email()),
+        HtmlUtils.htmlEscape(dto.message()));
   }
 
-  // Contrairement à envoyerMessageContact ci-dessus, une ResendException n'est pas avalée ici :
-  // comme la demande sur-mesure n'est stockée nulle part (ni fichier, ni base de données),
-  // l'email EST la seule trace de la demande. Si son envoi échoue, le client doit le savoir
-  // (réponse en erreur) plutôt que recevoir un 201 alors que sa demande a été perdue.
   public void envoyerDemandeSurMesure(CustomRequestDto dto, MultipartFile referenceImage) {
     Attachment attachment = referenceImageValidator.validateAndBuildAttachment(referenceImage);
 
@@ -106,7 +105,9 @@ public class MailService {
                     <p>%s</p>
                 </body>
             </html>
-            """.formatted(dto.name(), dto.description()))
+            """.formatted(
+            HtmlUtils.htmlEscape(dto.name()),
+            HtmlUtils.htmlEscape(dto.description())))
         .build();
 
     envoyer(params, "accusé de réception demande sur-mesure");
@@ -122,7 +123,7 @@ public class MailService {
     }
   }
 
-  private String construireCorpsEmailDemandeSurMesure(CustomRequestDto dto, boolean hasAttachment) {
+  String construireCorpsEmailDemandeSurMesure(CustomRequestDto dto, boolean hasAttachment) {
     return """
         <html>
             <body>
@@ -139,11 +140,11 @@ public class MailService {
             </body>
         </html>
         """.formatted(
-        dto.name(),
-        dto.email(),
-        dto.phone() != null ? dto.phone() : "non renseigné",
-        dto.budget() != null ? dto.budget() : "non renseigné",
-        dto.description(),
+        HtmlUtils.htmlEscape(dto.name()),
+        HtmlUtils.htmlEscape(dto.email()),
+        dto.phone() != null ? HtmlUtils.htmlEscape(dto.phone()) : "non renseigné",
+        dto.budget() != null ? HtmlUtils.htmlEscape(dto.budget()) : "non renseigné",
+        HtmlUtils.htmlEscape(dto.description()),
         hasAttachment ? "en pièce jointe" : "aucune");
   }
 }

@@ -22,17 +22,10 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-// Régression pour le bug diagnostiqué le 2026-09-06 : un événement Stripe dont l'api_version ne
-// correspond pas à Stripe.API_VERSION (figée dans stripe-java) faisait échouer silencieusement
-// EventDataObjectDeserializer.getObject() (Optional.empty()), provoquant un RuntimeException
-// "Failed to deserialize ..." -> 500, alors que le payload était par ailleurs parfaitement valide.
-// WebhookService.deserializeEventObject retombe désormais sur deserializeUnsafe() dans ce cas.
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers
 class WebhookServiceIntegrationTest {
-
-    // Doit correspondre à STRIPE_WEBHOOK_SECRET dans application-test.properties.
     private static final String WEBHOOK_SECRET = "whsec_dummy";
 
     @Container
@@ -86,10 +79,6 @@ class WebhookServiceIntegrationTest {
         order = orderDao.save(order);
         Long orderId = order.getId();
 
-        // api_version volontairement différente de Stripe.API_VERSION pour reproduire le bug :
-        // en conditions réelles, c'est la version configurée sur le compte/endpoint Stripe qui
-        // circule dans l'événement (souvent différente de celle figée dans le SDK, notamment
-        // avec `stripe listen` en local).
         String payload = "{"
                 + "\"id\": \"evt_test_apiversion\","
                 + "\"object\": \"event\","

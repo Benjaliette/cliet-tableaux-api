@@ -45,10 +45,6 @@ public class Order extends BaseEntity {
     @JoinColumn(name = "painting_id")
     private Painting painting;
 
-    // Constructeur sans argument requis par JPA/Hibernate pour recharger une
-    // Order existante depuis la base (findById, findByStripeSessionId, etc.) :
-    // sans lui, toute lecture d'un Order déjà persisté lève
-    // "No default constructor for entity 'Order'" (cassait les handlers webhook).
     protected Order() {
     }
 
