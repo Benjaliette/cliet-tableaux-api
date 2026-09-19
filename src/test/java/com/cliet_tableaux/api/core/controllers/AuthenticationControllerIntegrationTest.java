@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.cliet_tableaux.api.core.daos.UserDao;
 import com.cliet_tableaux.api.core.model.User;
+import com.cliet_tableaux.api.core.services.JwtService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
@@ -49,6 +50,9 @@ class AuthenticationControllerIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtService jwtService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -188,7 +192,13 @@ class AuthenticationControllerIntegrationTest {
 
         assertThat(refreshResult.getResponse().getContentAsString()).doesNotContain("\"password\"");
 
-        MvcResult usersResult = mockMvc.perform(get("/api/v1/users"))
+        // GET /api/v1/users est désormais réservé à ROLE_ADMIN (AUDIT_BACKEND.md, finding #4) :
+        // il faut un token admin pour l'atteindre, ce n'est plus une route publique.
+        User admin = persistUser("admin-for-users-check@example.com", "mot-de-passe-admin", true);
+        String adminToken = jwtService.generateAccessToken(admin);
+
+        MvcResult usersResult = mockMvc.perform(get("/api/v1/users")
+                        .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andReturn();
 

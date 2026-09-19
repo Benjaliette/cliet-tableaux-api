@@ -45,13 +45,17 @@ public class User extends BaseEntity implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Order> orders;
 
+    // Préfixe ROLE_ requis par Spring Security : hasRole("ADMIN") dans SecurityConfig compare
+    // implicitement à l'autorité "ROLE_ADMIN". Sans ce préfixe, hasRole("ADMIN") ne reconnaît
+    // jamais un admin (échec silencieux, aucune erreur au démarrage ni à l'exécution).
+    // Voir AUDIT_BACKEND.md, finding #9.
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (this.admin) {
-            return List.of(new SimpleGrantedAuthority("ADMIN"));
+            return List.of(new SimpleGrantedAuthority("ROLE_ADMIN"));
         }
 
-        return List.of(new SimpleGrantedAuthority("USER"));
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override
