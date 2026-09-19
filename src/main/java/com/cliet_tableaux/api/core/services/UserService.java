@@ -1,7 +1,10 @@
 package com.cliet_tableaux.api.core.services;
 
 import com.cliet_tableaux.api.core.daos.UserDao;
+import com.cliet_tableaux.api.core.dtos.ChangePasswordRequestDto;
+import com.cliet_tableaux.api.core.dtos.UpdateProfileRequestDto;
 import com.cliet_tableaux.api.core.dtos.UserResponseDto;
+import com.cliet_tableaux.api.core.exceptions.AuthenticationException;
 import com.cliet_tableaux.api.core.exceptions.ResourceNotFoundException;
 import com.cliet_tableaux.api.core.mappers.UserMapper;
 import com.cliet_tableaux.api.core.model.User;
@@ -46,5 +49,24 @@ public class UserService implements UserDetailsService {
 
     public User save(User user) {
         return userDao.save(user);
+    }
+
+    public UserResponseDto getCurrentUserProfile(User currentUser) {
+        return userMapper.toDto(currentUser);
+    }
+
+    public UserResponseDto updateProfile(User currentUser, UpdateProfileRequestDto request) {
+        currentUser.setFirstName(request.firstName());
+        currentUser.setLastName(request.lastName());
+        return userMapper.toDto(save(currentUser));
+    }
+
+    public void changePassword(User currentUser, ChangePasswordRequestDto request) {
+        if (!passwordEncoder.matches(request.currentPassword(), currentUser.getPassword())) {
+            throw new AuthenticationException("Mot de passe actuel incorrect");
+        }
+
+        currentUser.setPassword(passwordEncoder.encode(request.newPassword()));
+        save(currentUser);
     }
 }

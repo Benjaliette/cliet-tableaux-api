@@ -45,6 +45,8 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.POST, "/api/v1/paintings").hasRole("ADMIN")
                                 .requestMatchers(HttpMethod.PUT, "/api/v1/paintings/**").hasRole("ADMIN")
                                 .requestMatchers(HttpMethod.DELETE, "/api/v1/paintings/**").hasRole("ADMIN")
+                                .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+                                .requestMatchers(HttpMethod.PUT, "/api/v1/users/me", "/api/v1/users/me/password").authenticated()
                                 .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
                                 .requestMatchers(HttpMethod.POST, "/api/v1/cloudinary-signature").hasRole("ADMIN")
                                 .requestMatchers("/api/v1/auth/**", "/api/v1/contact", "/api/v1/custom-requests").permitAll()

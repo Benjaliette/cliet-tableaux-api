@@ -4,6 +4,7 @@ import com.cliet_tableaux.api.core.daos.OrderDao;
 import com.cliet_tableaux.api.core.daos.PaintingDao;
 import com.cliet_tableaux.api.core.dtos.CheckoutSessionRequest;
 import com.cliet_tableaux.api.core.dtos.CheckoutSessionResponse;
+import com.cliet_tableaux.api.core.dtos.OrderSummaryDto;
 import com.cliet_tableaux.api.core.enums.PaymentStatutEnum;
 import com.cliet_tableaux.api.core.exceptions.PaintingAlreadySoldException;
 import com.cliet_tableaux.api.core.exceptions.ResourceNotFoundException;
@@ -206,5 +207,26 @@ public class OrderService {
 
     order.setState(PaymentStatutEnum.FAILED);
     orderDao.save(order);
+  }
+
+  public List<OrderSummaryDto> findOrdersForUser(User user) {
+    return orderDao.findByUserOrderByCreatedAtDesc(user).stream()
+        .map(OrderService::toSummaryDto)
+        .toList();
+  }
+
+  private static OrderSummaryDto toSummaryDto(Order order) {
+    Painting painting = order.getPainting();
+
+    return new OrderSummaryDto(
+        order.getId(),
+        order.getState() != null ? order.getState().name() : null,
+        order.getAmountCents(),
+        order.getCurrency(),
+        order.getCreatedAt(),
+        painting != null ? painting.getId() : null,
+        painting != null ? painting.getTitle() : null,
+        painting != null ? painting.getImagePublicId() : null
+    );
   }
 }
